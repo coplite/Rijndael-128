@@ -12,4 +12,7 @@ Implementation of an aes encryption 128 bits maybe used for sleep obfuscation in
 
 # Why for Sleep Obfuscation?????
 ### Uhhhh idk :p
-### --> Maybe because receiving telemetry from SystemFunction032 every <insert-time-delay> seconds is kinda suspicious on the same memory region fluctuating from RW- to R-X and RC4 and SystemFunction032 is RC4 encryption which is kinda insecure and the function can be hooked (because its a winapi function and an edr can inline patch it if they wish) and it can fail (judging from its return value)?
+### --> Maybe because receiving telemetry from SystemFunction032 every <insert-time-delay> seconds is kinda suspicious 
+        on the same memory region fluctuating from RW- to R-X and RC4 and SystemFunction032 is RC4 encryption which is 
+        kinda insecure and the function can be hooked (because its a winapi function and an edr can inline patch it if they wish) 
+        and it can fail (judging from its return value)?
