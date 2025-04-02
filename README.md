@@ -6,7 +6,7 @@ Implementation of an aes encryption 128 bits maybe used for sleep obfuscation in
 
 # Is there anything you're going to add?
 ### Might add CTR mode with auto randomizable nonce via Mersenne 
-### Might add ChaCha20Poly1305 for faster encryption
+### Might add ChaCha20 for faster encryption or threefish
 ### Might remove MixColumns and ShiftRows because I need very low diffusion because encrypted memory pages are also suspicious
 ### Might rewrite some parts of this in assembly for smaller binaries, faster executions, and more ABI compatibility(I think thats how it works idk)
 
