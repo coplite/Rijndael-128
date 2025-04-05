@@ -62,8 +62,9 @@ size_t _strlen(char* input){
 void _memcpy(void *to, const void *from, size_t numBytes){
     char *d = to;
     const char *s = from;
-    while (numBytes--)
+    while (numBytes--){
         *d++ = *s++;
+    }
 }
 void _memset(void* ptr, int value, size_t num){
     unsigned char* d = ptr;
