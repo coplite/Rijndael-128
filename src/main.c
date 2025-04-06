@@ -34,13 +34,6 @@ int main(void){
 @     Rounds
 @ 10    12    14   
 
-Pro bittwiddle hack:
-
-To get the remainder of the number with bitwise operations you can use the AND operator
-normally:  x % y = z
-smartery: x & (y-1) = z
-reason i >> 4 works is because l value isnt going beyond 16 and 16 >> 4 is the only value thats nonzero
-
 Documentation time~~
 
 Ermmmm look at lib.c and lib.h for your functions
@@ -48,7 +41,4 @@ Ermmmm look at lib.c and lib.h for your functions
 aes_ctr_xcryption() can go wildd as how ever much as you want
 
 while for aes_encrypt() and aes_decrypt() you need to call pkcs7() to pad the text and have it unpad by inv_pkcs7()
-
-
-page 36 in K&R
 */
