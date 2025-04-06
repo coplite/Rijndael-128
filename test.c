@@ -12,7 +12,7 @@
 #define xtime(x) (uint8_t)(((x) << 1) ^ ((((x) >> 7) & 1) * 0x1B)) 
 
 // A possible error here is not parenthesising around each parameter in a #define statement
-// clang -Wall -Werror -pedantic -O2 -flto main.c -o aesEnc
+// clang -Wall -Werror -pedantic -O2 -flto test.c -o aesEnc
 
 static const uint8_t sbox[] = {
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
@@ -88,94 +88,78 @@ void inv_pcks7(uint8_t* input){
     }
     _memset(input + BLOCK_SIZE - signature, 0, signature);
 }
-void bytes_matrix(uint8_t* input, uint8_t matrix[4][4]){
-    short index = 0;
+void add_round_key(uint8_t* state, uint8_t* round_key){
     for(size_t i = 0; i < 4; i++){
         for(size_t j = 0; j < 4; j++){
-            matrix[i][j] = input[index++];
+            state[(i << 2) + j] ^= round_key[(i << 2) + j];
         }
     }
 }
-void matrix_bytes(uint8_t* input, uint8_t matrix[4][4]){
-    short index = 0;
+void sub_bytes(uint8_t* state, const uint8_t* sbox){
     for(size_t i = 0; i < 4; i++){
         for(size_t j = 0; j < 4; j++){
-            input[index++] = matrix[i][j];
+            state[(i << 2) + j] = sbox[state[(i << 2) + j]];
         }
     }
 }
-void add_round_key(uint8_t state[4][4], uint8_t* round_key){
-    for(size_t i = 0; i < 4; i++){
-        for(size_t j = 0; j < 4; j++){
-            state[i][j] ^= round_key[(i << 2) + j];
-        }
-    }
+void shift_rows(uint8_t* state){
+    uint8_t temp = state[1];
+    state[1] = state[5];      // 1st row
+    state[5] = state[9];
+    state[9] = state[13];
+    state[13] = temp;
+    temp = state[2];             // 2nd row
+    state[2] = state[10];
+    state[10] = temp;
+    temp = state[6];
+    state[6] = state[14];
+    state[14] = temp;
+    temp = state[3];             // 3rd row
+    state[3] = state[15];
+    state[15] = state[11];
+    state[11] = state[7];
+    state[7] = temp;
 }
-void sub_bytes(uint8_t state[4][4], const uint8_t* sbox){
-    for(size_t i = 0; i < 4; i++){
-        for(size_t j = 0; j < 4; j++){
-            state[i][j] = sbox[state[i][j]];
-        }
-    }
+void inv_shift_rows(uint8_t* state){
+    uint8_t temp = state[13];   
+    state[13] = state[9];                  // 1st row
+    state[9] = state[5];
+    state[5] = state[1];
+    state[1] = temp;
+    temp = state[2];                         // 2nd row
+    state[2] = state[10];
+    state[10] = temp;
+    temp = state[6];
+    state[6] = state[14];
+    state[14] = temp;
+    temp = state[3];                         // 3rd row
+    state[3] = state[7];
+    state[7] = state[11];
+    state[11] = state[15];
+    state[15] = temp; 
 }
-void shift_rows(uint8_t state[4][4]){
-    uint8_t temp = state[0][1];
-    state[0][1] = state[1][1];      // 1st row
-    state[1][1] = state[2][1];
-    state[2][1] = state[3][1];
-    state[3][1] = temp;
-    temp = state[0][2];             // 2nd row
-    state[0][2] = state[2][2];
-    state[2][2] = temp;
-    temp = state[1][2];
-    state[1][2] = state[3][2];
-    state[3][2] = temp;
-    temp = state[0][3];             // 3rd row
-    state[0][3] = state[3][3];
-    state[3][3] = state[2][3];
-    state[2][3] = state[1][3];
-    state[1][3] = temp;
-}
-void inv_shift_rows(uint8_t state[4][4]){
-    uint8_t temp = state[3][1];   
-    state[3][1] = state[2][1];                  // 1st row
-    state[2][1] = state[1][1];
-    state[1][1] = state[0][1];
-    state[0][1] = temp;
-    temp = state[0][2];                         // 2nd row
-    state[0][2] = state[2][2];
-    state[2][2] = temp;
-    temp = state[1][2];
-    state[1][2] = state[3][2];
-    state[3][2] = temp;
-    temp = state[0][3];                         // 3rd row
-    state[0][3] = state[1][3];
-    state[1][3] = state[2][3];
-    state[2][3] = state[3][3];
-    state[3][3] = temp; 
-}
-void mix_columns(uint8_t state[4][4]){
+void mix_columns(uint8_t* state){
     uint8_t t = 0;
     uint8_t u = 0;
     for(int i = 0; i < 4; i++){
-        u = state[i][0];
-        t = state[i][0] ^ state[i][1] ^ state[i][2] ^ state[i][3];
-        state[i][0] ^= t ^ xtime(state[i][0] ^ state[i][1]);
-        state[i][1] ^= t ^ xtime(state[i][1] ^ state[i][2]);
-        state[i][2] ^= t ^ xtime(state[i][2] ^ state[i][3]);
-        state[i][3] ^= t ^ xtime(state[i][3] ^ u);
+        u = state[i << 2];
+        t = state[i << 2] ^ state[(i << 2) + 1] ^ state[(i << 2) + 2] ^ state[(i << 2) + 3];
+        state[(i << 2)] ^= t ^ xtime(state[(i << 2)] ^ state[(i << 2) + 1]);
+        state[(i << 2) + 1] ^= t ^ xtime(state[(i << 2) + 1] ^ state[(i << 2) + 2]);
+        state[(i << 2) + 2] ^= t ^ xtime(state[(i << 2) + 2] ^ state[(i << 2) + 3]);
+        state[(i << 2) + 3] ^= t ^ xtime(state[(i << 2) + 3] ^ u);
     }
 }
-void inv_mix_columns(uint8_t state[4][4]){
+void inv_mix_columns(uint8_t* state){
     uint8_t u = 0;
     uint8_t v = 0;
     for(int i = 0; i < 4; i++){
-        u = xtime(xtime(state[i][0] ^ state[i][2]));
-        v = xtime(xtime(state[i][1] ^ state[i][3]));
-        state[i][0] ^= u;
-        state[i][1] ^= v;
-        state[i][2] ^= u;
-        state[i][3] ^= v;
+        u = xtime(xtime(state[(i << 2)] ^ state[(i << 2) + 2]));
+        v = xtime(xtime(state[(i << 2) + 1] ^ state[(i << 2) + 3]));
+        state[(i << 2)] ^= u;
+        state[(i << 2) + 1] ^= v;
+        state[(i << 2) + 2] ^= u;
+        state[(i << 2) + 3] ^= v;
     }
     mix_columns(state);
 }
@@ -215,34 +199,29 @@ void encrypt(uint8_t* data, struct key_wrapper* keys){
     for(size_t i = 0; i < BLOCK_SIZE; i++){
         data[i] ^= keys->key[i];
     }
-    uint8_t state[4][4] = {0};
-    bytes_matrix(data, state);
     for(size_t i = 1; i < 10; i++){
-        sub_bytes(state, sbox);
-        shift_rows(state);
-        mix_columns(state);
-        add_round_key(state, keys->round_key + (i * BLOCK_SIZE));
+        sub_bytes(data, sbox);
+        shift_rows(data);
+        mix_columns(data);
+        add_round_key(data, keys->round_key + (i * BLOCK_SIZE));
     }
-    sub_bytes(state, sbox);
-    shift_rows(state);
-    add_round_key(state, keys->round_key + (10 * BLOCK_SIZE));
-    matrix_bytes(data, state);
+    sub_bytes(data, sbox);
+    shift_rows(data);
+    add_round_key(data, keys->round_key + (10 * BLOCK_SIZE));
 }
 void decrypt(uint8_t* data, struct key_wrapper* keys){
-    uint8_t state[4][4] = {0};
-    bytes_matrix(data, state);
-    add_round_key(state, keys->round_key + (10 * BLOCK_SIZE));
-    inv_shift_rows(state);
-    sub_bytes(state, inv_sbox);
+    add_round_key(data, keys->round_key + (10 * BLOCK_SIZE));
+    inv_shift_rows(data);
+    sub_bytes(data, inv_sbox);
     for(size_t i = 9; i > 0; i--){
-        add_round_key(state, keys->round_key + (i * BLOCK_SIZE));
-        inv_mix_columns(state);
-        inv_shift_rows(state);
-        sub_bytes(state, inv_sbox);
+        add_round_key(data, keys->round_key + (i * BLOCK_SIZE));
+        inv_mix_columns(data);
+        inv_shift_rows(data);
+        sub_bytes(data, inv_sbox);
     }
-    add_round_key(state, keys->key);
-    matrix_bytes(data, state);
+    add_round_key(data, keys->key);
 }
+
 int main(int argc, char** argv){
     if(argc != 2){
         printf("Usage: %s {key}\n", argv[0]);
@@ -275,3 +254,21 @@ int main(int argc, char** argv){
     inv_pcks7(input);
     printf("If this is the same as the input, the encryption worked\n--> '%s' with the length of %lu\n", input, _strlen((char*)input));
 }
+
+
+
+/**
+ * @brief 
+ * 
+ * {0, 1, 2, 3,
+ *  4, 5, 6, 7,
+ *  8, 9, a, b,
+ *  c, d, e, f}
+ * 
+ * {0:0, 0:1, 0:2, 0:3}
+ * {1:0, 1:1, 1:2, 1:3}
+ * {2:0, 2:1, 2:2, 2:3}
+ * {3:0, 3:1, 3:2, 3:3}
+ * 
+ * 
+ */
