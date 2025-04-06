@@ -5,20 +5,50 @@
 
 int main(void){
     key_wrapper keys = {0};
-    uint8_t key[BLOCK_SIZE] = {0x6b,0x3c,0x33,0x09,0x39,0x43,0xf2,0xa0,0xde,0xfc,0xfc,0x94,0xda,0x56,0xf9,0x91};
-    uint8_t data[BLOCK_SIZE] = "hello world!";
-    
-    pcks7(data);
+    uint8_t key[BLOCK_SIZE] =   { 0x6b, 0x3c, 0x33, 0x09, 0x39, 0x43, 0xf2, 0xa0, 0xde, 0xfc, 0xfc, 0x94, 0xda, 0x56, 0xf9, 0x91 };
+    uint8_t nonce[BLOCK_SIZE] = { 0x53, 0x48, 0x83, 0xEC, 0x08, 0x49, 0xBA, 0xEF, 0xBE, 0xAD, 0xDE, 0xEF, 0xBE, 0xAD, 0xDE, 0x41 };
 
+    uint8_t data[] = "What the fuck is thisssss"; // 16
+
+    //pcks7(data);
     _memcpy(keys.key, key, BLOCK_SIZE);
+    _memcpy(keys.nonce, nonce, BLOCK_SIZE);
+
     key_expansion(keys.round_key, keys.round_key);
 
-    encrypt(data, &keys);
-    printf("%s\n", data);
+    printf("'%s' with the length of %lu\n", data, _strlen((char*)data));
 
-    decrypt(data, &keys);
-    inv_pcks7(data);
+    aes_ctr_xcryption(data, &keys);
+    printf("'%s' with the length of %lu\n", data, _strlen((char*)data));
 
-    printf("%s with length of %lu\n", data, _strlen((char*)data));
+    aes_ctr_xcryption(data, &keys);
+    //inv_pcks7(data);
+
+    printf("'%s' with the length of %lu\n", data, _strlen((char*)data));
     return 0;
 }
+
+/*
+@   Security bits
+@ 128 - 192 - 256
+@     Rounds
+@ 10    12    14   
+
+Pro bittwiddle hack:
+
+To get the remainder of the number with bitwise operations you can use the AND operator
+normally:  x % y = z
+smartery: x & (y-1) = z
+reason i >> 4 works is because l value isnt going beyond 16 and 16 >> 4 is the only value thats nonzero
+
+Documentation time~~
+
+Ermmmm look at lib.c and lib.h for your functions
+
+aes_ctr_xcryption() can go wildd as how ever much as you want
+
+while for aes_encrypt() and aes_decrypt() you need to call pkcs7() to pad the text and have it unpad by inv_pkcs7()
+
+
+page 36 in K&R
+*/
