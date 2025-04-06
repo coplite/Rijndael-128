@@ -1,16 +1,7 @@
 #include "../include/lib.h"
 
-/*
-@   Security bits
-@ 128 - 192 - 256
-@     Rounds
-@ 10    12    14   
-*/
-
 #define BLOCK_SIZE 16
-#define xtime(x) (uint8_t)(((x) << 1) ^ ((((x) >> 7) & 1) * 0x1B)) 
-
-// A possible error here is not parenthesising around each parameter in a #define statement
+#define xtime(x) (uint8_t)(((x) << 1) ^ ((((x) >> 7) & 1) * 0x1B)) // A possible error here is not parenthesising around each parameter in a #define statement
 
 static const uint8_t sbox[] = {
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
@@ -48,69 +39,58 @@ static const uint8_t inv_sbox[] = {
     0xA0, 0xE0, 0x3B, 0x4D, 0xAE, 0x2A, 0xF5, 0xB0, 0xC8, 0xEB, 0xBB, 0x3C, 0x83, 0x53, 0x99, 0x61,
     0x17, 0x2B, 0x04, 0x7E, 0xBA, 0x77, 0xD6, 0x26, 0xE1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0C, 0x7D,
 };
-
 size_t _strlen(char* input){
-    if(!input){
-        return 0;
-    }
     char* end = input;
-    while(*(end)){
+    while(*(end))
         end++;
-    }
     return (size_t)(end - input);
 }
 void _memcpy(void *to, const void *from, size_t numBytes){
     char *d = to;
     const char *s = from;
-    while (numBytes--){
+    while (numBytes--)
         *d++ = *s++;
-    }
 }
 void _memset(void* ptr, int value, size_t num){
     unsigned char* d = ptr;
-    while(num--){
+    while(num--)
         *d++ = value;
-    }
 }
 void pcks7(uint8_t* input){
     size_t len = _strlen((char*)input);
     uint8_t byte = BLOCK_SIZE - len;
     _memset(input + len, byte, byte);
+    input[BLOCK_SIZE] = '\x00'; //idk if i should put this or nah because if i dont my uint array isnt null terminated
 }
 void inv_pcks7(uint8_t* input){
     short signature = input[BLOCK_SIZE - 1];
-    if(signature > BLOCK_SIZE){
+    if(signature > BLOCK_SIZE)
         return;
-    }
     _memset(input + BLOCK_SIZE - signature, 0, signature);
 }
 void add_round_key(uint8_t* state, uint8_t* round_key){
-    for(size_t i = 0; i < 4; i++){
-        for(size_t j = 0; j < 4; j++){
+    for(size_t i = 0; i < 4; i++)
+        for(size_t j = 0; j < 4; j++)
             state[(i << 2) + j] ^= round_key[(i << 2) + j];
-        }
-    }
 }
 void sub_bytes(uint8_t* state, const uint8_t* sbox){
-    for(size_t i = 0; i < 4; i++){
-        for(size_t j = 0; j < 4; j++){
+    for(size_t i = 0; i < 4; i++)
+        for(size_t j = 0; j < 4; j++)
             state[(i << 2) + j] = sbox[state[(i << 2) + j]];
-        }
-    }
 }
 void shift_rows(uint8_t* state){
     uint8_t temp = state[1];
-    state[1] = state[5];      // 1st row
+    state[1] = state[5];        // 1st row
     state[5] = state[9];
     state[9] = state[13];
     state[13] = temp;
-    temp = state[2];             // 2nd row
+    temp = state[2];            // 2nd row
     state[2] = state[10];
     state[10] = temp;
     temp = state[6];
     state[6] = state[14];
     state[14] = temp;
-    temp = state[3];             // 3rd row
+    temp = state[3];            // 3rd row
     state[3] = state[15];
     state[15] = state[11];
     state[11] = state[7];
@@ -118,17 +98,17 @@ void shift_rows(uint8_t* state){
 }
 void inv_shift_rows(uint8_t* state){
     uint8_t temp = state[13];   
-    state[13] = state[9];                  // 1st row
+    state[13] = state[9];       // 1st row
     state[9] = state[5];
     state[5] = state[1];
     state[1] = temp;
-    temp = state[2];                         // 2nd row
+    temp = state[2];            // 2nd row
     state[2] = state[10];
     state[10] = temp;
     temp = state[6];
     state[6] = state[14];
     state[14] = temp;
-    temp = state[3];                         // 3rd row
+    temp = state[3];            // 3rd row
     state[3] = state[7];
     state[7] = state[11];
     state[11] = state[15];
@@ -168,52 +148,65 @@ void key_expansion(uint8_t* key, uint8_t* round_key){
     for(size_t i = 4; i < 44; i++){             // BLOCK_SIZE/4*11
         pidx = (i - 1) << 2;                    // multiply by 4
         nidx = i << 2;                          // multiply by 4
-        operand[0] = round_key[pidx+0];
-        operand[1] = round_key[pidx+1];
-        operand[2] = round_key[pidx+2];
-        operand[3] = round_key[pidx+3];
+        operand[0] = round_key[pidx];
+        operand[1] = round_key[pidx + 1];
+        operand[2] = round_key[pidx + 2];
+        operand[3] = round_key[pidx + 3];
         if(!(i & 0x3)){                         // check if multiple of 4   this is RotWord
            const uint8_t temp = operand[0];
             operand[0] = operand[1];
             operand[1] = operand[2];
             operand[2] = operand[3];
             operand[3] = temp;
-            // Sub bytes
-            operand[0] = sbox[operand[0]];
+            operand[0] = sbox[operand[0]];      // Sub bytes start here
             operand[1] = sbox[operand[1]];
             operand[2] = sbox[operand[2]];
             operand[3] = sbox[operand[3]];
             operand[0] ^= r_con[i >> 2];        // this is Rcon  i/4
         }
-        round_key[nidx+0] = round_key[pidx - 12] ^ operand[0];
-        round_key[nidx+1] = round_key[pidx - 11] ^ operand[1];
-        round_key[nidx+2] = round_key[pidx - 10] ^ operand[2];
-        round_key[nidx+3] = round_key[pidx -  9] ^ operand[3];
+        round_key[nidx] = round_key[pidx - 12] ^ operand[0];
+        round_key[nidx + 1] = round_key[pidx - 11] ^ operand[1];
+        round_key[nidx + 2] = round_key[pidx - 10] ^ operand[2];
+        round_key[nidx + 3] = round_key[pidx -  9] ^ operand[3];
     }  
 }
-void encrypt(uint8_t* data, key_wrapper* keys){
-    for(size_t i = 0; i < BLOCK_SIZE; i++){
+void aes_encrypt(uint8_t* data, key_wrapper* keys){
+    for(size_t i = 0; i < BLOCK_SIZE; i++)
         data[i] ^= keys->key[i];
-    }
     for(size_t i = 1; i < 10; i++){
         sub_bytes(data, sbox);
         shift_rows(data);
         mix_columns(data);
-        add_round_key(data, keys->round_key + (i << 4)); // (i * BLOCK_SIZE)
+        add_round_key(data, keys->round_key + (i << 4)); // (i * BLOCK_SIZE) = 160
     }
     sub_bytes(data, sbox);
     shift_rows(data);
-    add_round_key(data, keys->round_key + (160)); // (10 * BLOCK_SIZE)
+    add_round_key(data, keys->round_key + 160); // (10 * BLOCK_SIZE) = 160
 }
-void decrypt(uint8_t* data, key_wrapper* keys){
-    add_round_key(data, keys->round_key + (160)); // (10 * BLOCK_SIZE)
+void aes_decrypt(uint8_t* data, key_wrapper* keys){
+    add_round_key(data, keys->round_key + 160); // (10 * BLOCK_SIZE) = 160
     inv_shift_rows(data);
     sub_bytes(data, inv_sbox);
     for(size_t i = 9; i > 0; i--){
-        add_round_key(data, keys->round_key + (i << 4)); // (i * BLOCK_SIZE)
+        add_round_key(data, keys->round_key + (i << 4)); // (i * BLOCK_SIZE) = 160
         inv_mix_columns(data);
         inv_shift_rows(data);
         sub_bytes(data, inv_sbox);
     }
     add_round_key(data, keys->key);
+}
+void aes_ctr_xcryption(uint8_t* data, key_wrapper* keys){
+    uint8_t nonce[BLOCK_SIZE] = {0};
+    size_t length = _strlen((char*)data);
+    size_t i = 0;
+    size_t l = 0;
+    _memcpy(nonce, keys->nonce, BLOCK_SIZE);
+    aes_encrypt(nonce, keys);
+    for(; i < length; i++, l++){
+        data[i] ^= nonce[l];
+        if(l >> 4){
+            nonce[i >> 4]++;
+            l ^= l;
+        }
+    }
 }
