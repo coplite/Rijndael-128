@@ -205,7 +205,7 @@ void aes_ctr_xcryption(uint8_t* data, key_wrapper* keys){
     for(; i < length; i++, l++){
         data[i] ^= nonce[l];
         if(l >> 4){
-            nonce[i >> 4]++;
+            nonce[(i >> 4) & 0xf]++;
             l ^= l;
         }
     }
